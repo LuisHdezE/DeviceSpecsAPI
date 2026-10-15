@@ -17,3 +17,9 @@ Se seleccionó de forma experimental `gsmarena-api@2.0.5` de nordmarin (MIT para
 
 ## Evidencias
 Pruebas en Elena, 2026-10-15 con `gsmarena-api@2.0.5`:\n- `search.search('iPhone 13')`: `[]`, aunque el modelo existe.\n- `search.search('samsung')`: `[]`, resultado incorrecto para búsqueda general.\n- `catalog.getDevice('apple_iphone_13-11103')`: devuelve ficha real con grupos `detailSpec`, incluyendo conectividad.\n- `npm run lint`, `npm run typecheck`, `npm test` (10/10), `npm run build` y `npm audit --omit=dev --audit-level=high` (0 vulnerabilidades): OK.\n\n**Bloqueante:** reparar o sustituir el mecanismo de búsqueda antes de considerar operativo el proveedor. No habilitar endpoints públicos ni desplegar esta dependencia como funcionalidad completa.
+
+## Diagnóstico adicional · 2026-10-15
+
+Inspección del código fuente instalado: `src/services/search.js` solicita `/results.php3?sQuickSearch=yes&sName=...` y extrae resultados usando el selector `.makers li`. La respuesta de búsqueda vacía puede significar ausencia de resultados, HTML inesperado o protección del sitio: con esta biblioteca no hay suficientes señales para distinguirlos de manera confiable. Una consulta HTTP independiente a la misma ruta desde Elena devolvió **429 Too Many Requests**. Se detuvieron las consultas exploratorias, sin intentar evadir el límite.
+
+Se incorporó clasificación explícita de errores de red/429 y tests offline. **Esto no repara la búsqueda real**, y no autoriza el despliegue. Próxima decisión: acordar una fuente con acceso permitido y estable o usar un catálogo local obtenido de una fuente autorizada; no crear mecanismos para eludir restricciones de acceso.
