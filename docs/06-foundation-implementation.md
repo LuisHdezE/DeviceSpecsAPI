@@ -1,6 +1,6 @@
 # DSA-001 · Implementación de fundamentos
 
-Estado: **PR pendiente de integración y validación CI** (2026-10-15).
+Estado: **implementación y pruebas locales verificadas; merge pendiente** (2026-10-15).
 
 ## Incluido
 - Node.js 22+, TypeScript strict, Fastify y Zod.
@@ -21,6 +21,6 @@ npm run dev
 ```
 
 ## Verificación y pendientes
-No se ejecutaron tests locales en el entorno de autoría porque el registro npm no estaba accesible. Los resultados de CI deben verificarse antes de aprobar el merge. Esta etapa no configura autenticación para rutas de negocio porque dichas rutas no existen. No se desplegó Cloud Run.
+Pruebas ejecutadas en Elena el 2026-10-15: `npm run lint` OK, `npm run typecheck` OK, `npm test` **5/5 OK**, `npm run build` OK y `npm audit --omit=dev --audit-level=high` **0 vulnerabilidades**. Se generó y versionó `package-lock.json`; CI usa `npm ci`. La confirmación final del workflow de GitHub Actions debe revisarse antes del merge. Esta etapa no configura autenticación para rutas de negocio porque dichas rutas no existen. No se desplegó Cloud Run.
 
 **Seguridad:** nada de secretos; logging sin datos de credenciales; límite de cuerpo de petición y timeout; gestión de errores genérica. No confundirlo con hardening completo DSA-003.
