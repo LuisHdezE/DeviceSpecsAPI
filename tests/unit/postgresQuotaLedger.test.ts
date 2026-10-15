@@ -20,10 +20,10 @@ describe('PostgresQuotaLedger defensive validation', () => {
   it('does not debit if an active window policy is changed', async () => {
     const sql: string[] = [];
     const db: TransactionRunner = {
-      transaction: async work => work({ query: async (query) => {
+      transaction: async work => work({ query: async <T extends Record<string, unknown>>(query: string): Promise<{ rows: T[] }> => {
         sql.push(query);
         return { rows: query.startsWith('SELECT') ?
-          [{ consumed: 0, reset_at_ms: w.resetAt.getTime(), limit_value: 16, reserve_value: 8 }] : [] };
+          [{ consumed: 0, reset_at_ms: w.resetAt.getTime(), limit_value: 16, reserve_value: 8 }] : []) as unknown as T[] };
       } }),
     };
     expect((await new PostgresQuotaLedger(db).reserve([w], 1, now)).allowed).toBe(false);
