@@ -13,10 +13,13 @@
 **Aprobada como destino previsto · 2026-10-15.** Google Cloud Run en proyecto independiente del de eFactura, escalado a cero. Aún no hay despliegue ni facturación verificados en este repositorio.
 
 ## ADR-005 · Proveedor
-**Evaluación pendiente.** GSMArena será una dependencia externa reemplazable. RapidAPI descartado por requerir tarjeta y permitir sobrecargos. Paquetes de scraping de código abierto son candidatos, **no** proveedores aprobados hasta probar respuestas, mantenimiento, licencias y condiciones de uso.
+**Evaluación pendiente.** GSMArena será la primera preferencia del ranking, pero RapidAPI/GSMArena se mantiene deshabilitado hasta verificar acceso sin tarjeta ni cargos por excedentes; se evaluarán MobileAPI.dev y TechSpecs con el mismo criterio. Paquetes de scraping de código abierto son candidatos, **no** proveedores aprobados hasta probar respuestas, mantenimiento, licencias y condiciones de uso.
 
 ## ADR-006 · Seguridad y gobernanza
 **Aprobada · 2026-10-15.** Público no significa sin controles. Autenticación backend-to-backend, secretos fuera del repositorio, tests y CI obligatorios, PR pequeñas; autorización expresa para merge y despliegue.
+
+## ADR-007 · Ranking, cuotas y failover multi-proveedor
+**Aprobada para diseño · 2026-10-15.** GSMArena es la primera preferencia, pero solo podrá habilitarse si se verifica ausencia de tarjeta y sobrecostos. El microservicio elegirá el proveedor habilitado de mayor ranking con cuota disponible, reservará 8 solicitudes cuando haya límite conocido, interpretará el 429 según su ventana real y restablecerá automáticamente el ranking tras vencimiento. Contadores compartidos atómicos, caché y tests de concurrencia obligatorios. Ver [especificación completa](07-provider-routing-and-quotas.md). Sin implementación todavía.
 
 ## Estado por bloque
 | Bloque | Alcance | Estado |
