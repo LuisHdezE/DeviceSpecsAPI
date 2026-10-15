@@ -11,7 +11,7 @@ const window = (windowId = 'day-20261015', limit = 15): QuotaWindow => ({
 class FakeFirestore implements FirestoreQuotaDatabase {
   readonly records = new Map<string, Record<string, unknown>>();
   private queue: Promise<void> = Promise.resolve();
-  readonly collection = (_path: string) => ({ doc: (id: string) => ({ id, get: async () => this.snapshot(id) }) });
+  readonly collection = (path: string) => ({ doc: (id: string) => ({ id: path + '/' + id, get: async () => this.snapshot(id) }) });
   private snapshot(id: string) {
     const data = this.records.get(id);
     return { exists: !!data, data: () => data ? { ...data } : undefined };
