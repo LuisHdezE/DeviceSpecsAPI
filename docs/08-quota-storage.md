@@ -1,9 +1,7 @@
 # DSA-002B · Almacenamiento de cuotas
 
-Estado: implementación parcial. Puerto de reserva atómica, guard de cuotas y ledger de memoria SOLO PARA PRUEBAS. No habilitar en Cloud Run ni conectar proveedores reales.
+Decisión vigente: **Google Cloud Firestore** como contador duradero y compartido para Cloud Run. Ver [09 · FirestoreQuotaLedger](09-firestore-quota-ledger.md). PostgreSQL y MySQL quedaron descartados.
 
-La implementación de producción necesitará almacén compartido transaccional (por ejemplo PostgreSQL), con bloqueo determinista de todas las ventanas por transacción, incremento atómico o rechazo completo, identidad estable de ventana, reset verificado y registros duraderos. Los contadores no deben disminuir ni reiniciarse por cambios de configuración. Tests de concurrencia deben utilizar al menos dos conexiones/instancias independientes.
+El puerto `QuotaLedger` y `QuotaGuard` preservan la separación del dominio. La implementación en memoria es exclusivamente para pruebas. `FirestoreQuotaLedger` reserva atómicamente todas las ventanas en una transacción de Firestore, mantiene ocho consultas reservadas y rechaza políticas no coincidentes. Los errores de persistencia se propagan: denegar solicitudes externas ante fallas, sin fallback a memoria.
 
-Cada petición HTTP externa requiere reserva antes de llamar. Ante coste incierto se mantiene débito conservador. Se debe aplicar también rate limiting por segundo y cuotas de transferencia si corresponden. Ausencia de ventanas configuradas equivale a DENEGADO, nunca ilimitado.
-
-Trabajo pendiente: adaptador transaccional real, configuración de conexiones/secretos, migraciones, tests de integración multi-instancia y verificación de la política contractual. No existe garantía de cuota persistente entre reinicios todavía.
+Pendiente antes de producción: configurar SDK/credenciales por identidad de servicio, crear la base, confirmar permisos y cuotas gratuitas, probar contra emulador/Firestore real y comprobar concurrencia entre clientes distintos. No habilitar proveedores externos ni desplegar en esta PR.
