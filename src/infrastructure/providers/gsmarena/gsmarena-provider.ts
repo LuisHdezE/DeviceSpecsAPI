@@ -11,6 +11,21 @@ export interface GsmarenaClient {
 export class ProviderResponseError extends Error {
   constructor() { super('Unexpected response from device specifications provider'); this.name = 'ProviderResponseError'; }
 }
+export class ProviderRateLimitedError extends Error {
+  constructor() { super('Device specifications provider rate limited the request'); this.name = 'ProviderRateLimitedError'; }
+}
+export class ProviderUnavailableError extends Error {
+  constructor() { super('Device specifications provider unavailable'); this.name = 'ProviderUnavailableError'; }
+}
+function rethrowProviderFailure(error: unknown): never {
+  if (error && typeof error === 'object' && 'response' in error) {
+    const response = error.response;
+    if (response && typeof response === 'object' && 'status' in response) {
+      if (response.status === 429) throw new ProviderRateLimitedError();
+    }
+  }
+  throw new ProviderUnavailableError();
+}
 const allowedId = /^[a-z0-9_]+-[0-9]+$/i;
 
 function normalizeName(value: unknown): string {
@@ -54,11 +69,17 @@ export class GsmarenaProvider implements DeviceSpecificationsProvider {
   async search(query: string): Promise<readonly DeviceSummary[]> {
     const cleaned = query.trim();
     if (cleaned.length < 2 || cleaned.length > 100) throw new RangeError('Search must be 2-100 characters');
-    return normalizeSearch(await this.client.search.search(cleaned));
+    try { return normalizeSearch(await this.client.search.search(cleaned)); }
+    catch (error) {
+      if (error instanceof ProviderResponseError) throw error;
+      rethrowProviderFailure(error);
+    }
   }
   async getById(id: string): Promise<DeviceDetails | null> {
     if (!allowedId.test(id)) throw new RangeError('Invalid device identifier');
-    const raw = await this.client.catalog.getDevice(id);
+    let raw: unknown;
+    try { raw = await this.client.catalog.getDevice(id); }
+    catch (error) { rethrowProviderFailure(error); }
     return raw === null || raw === undefined ? null : normalizeDetails(id, raw);
   }
 }
