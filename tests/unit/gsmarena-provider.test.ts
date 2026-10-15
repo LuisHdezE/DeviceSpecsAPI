@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { GsmarenaProvider, ProviderResponseError } from '../../src/infrastructure/providers/gsmarena/gsmarena-provider.js';
+import { GsmarenaProvider, ProviderResponseError, ProviderRateLimitedError, ProviderUnavailableError } from '../../src/infrastructure/providers/gsmarena/gsmarena-provider.js';
 
 describe('GsmarenaProvider', () => {
  const client = () => ({ search: { search: vi.fn().mockResolvedValue([{ id:'apple_iphone_13-11103', name:'Apple iPhone 13' }]) },
@@ -18,6 +18,14 @@ describe('GsmarenaProvider', () => {
  });
  it('rejects invalid search strings', async () => {
    await expect(new GsmarenaProvider(client()).search(' ')).rejects.toThrow(RangeError);
+ });
+ it('reports rate limiting instead of an empty result', async () => {
+   const c=client(); c.search.search.mockRejectedValueOnce({ response: { status: 429 } });
+   await expect(new GsmarenaProvider(c).search('iphone 13')).rejects.toBeInstanceOf(ProviderRateLimitedError);
+ });
+ it('reports provider outage without leaking upstream errors', async () => {
+   const c=client(); c.search.search.mockRejectedValueOnce(new Error('sensitive upstream detail'));
+   await expect(new GsmarenaProvider(c).search('iphone 13')).rejects.toBeInstanceOf(ProviderUnavailableError);
  });
  it('rejects unexpected provider payloads', async () => {
    const c=client(); c.catalog.getDevice.mockResolvedValueOnce({ name:'Broken' } as never);
