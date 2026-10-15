@@ -18,9 +18,11 @@ FixPhone admin -> Laravel (autorización/persistencia opcional)
                         |
                Domain provider ports
                         |
-            GSMArena provider adapter
-                        |
-            Fuente externa (solo lectura)
+           Provider Router / QuotaManager
+                  /      |      \
+            GSMArena  MobileAPI  TechSpecs
+                  \      |      /
+             Fuentes externas (solo lectura)
 ```
 
 ## Tecnología seleccionada
@@ -68,7 +70,7 @@ README.md
 Todos los endpoints de negocio estarán autenticados, sujetos a validación, límites y errores normalizados. Formato JSON y OpenAPI se congelarán mediante pruebas de contrato antes de la integración de FixPhone.
 
 ## Responsabilidades
-- **DeviceSpecsAPI:** búsqueda y normalización, control de llamadas al proveedor, errores, observabilidad, caché no sensible.
+- **DeviceSpecsAPI:** búsqueda y normalización, selección de proveedor por ranking, contadores atómicos de cuotas, failover/cooldown, errores, observabilidad y caché no sensible. Ver [ADR-007](07-provider-routing-and-quotas.md).
 - **FixPhone Laravel:** autenticación de usuario/permiso, vínculo con catálogo, decisión de guardar, persistencia y auditoría, showroom fuera del alcance.
 - **Google Cloud Run:** ejecución bajo demanda y controles de recursos, no base de datos principal.
 
