@@ -10,6 +10,7 @@ DeviceSpecsAPI es un microservicio de **solo lectura** para consultar caracterí
 - [03 · Seguridad y pruebas](03-security-and-testing.md)
 - [04 · Despliegue y operación Cloud Run](04-deployment-and-operations.md)
 - [05 · Decisiones y registro de cambios](05-decisions-and-status.md)
+- [07 · Routing de proveedores, cuotas y recuperación](07-provider-routing-and-quotas.md)
 
 ## Regla documental
 No marcar una funcionalidad como implementada o desplegada sin evidencia concreta: commit, PR, workflow o revisión del servicio. Actualizar estos documentos en la misma PR de cada cambio relevante. Nunca almacenar claves, tokens, contraseñas, IDs sensibles ni configuración secreta en este repositorio público.
