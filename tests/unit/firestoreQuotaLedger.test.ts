@@ -11,7 +11,7 @@ const window = (windowId = 'day-20261015', limit = 15): QuotaWindow => ({
 class FakeFirestore implements FirestoreQuotaDatabase {
   readonly records = new Map<string, Record<string, unknown>>();
   private queue: Promise<void> = Promise.resolve();
-  readonly collection = (path: string) => ({ doc: (id: string) => ({ id: path + '/' + id, get: async () => this.snapshot(id) }) });
+  readonly collection = (path: string) => ({ doc: (id: string) => ({ id: path + '/' + id, get: async () => this.snapshot(path + '/' + id) }) });
   private snapshot(id: string) {
     const data = this.records.get(id);
     return { exists: !!data, data: () => data ? { ...data } : undefined };
@@ -88,6 +88,26 @@ describe('FirestoreQuotaLedger', () => {
     const next = { ...window('day-20261016'), resetAt: new Date('2026-10-17T00:00:00Z') };
     expect((await ledger.reserve([next], 1, new Date('2026-10-16T12:00:00Z'))).allowed).toBe(true);
     expect(db.records.size).toBe(2);
+  });
+
+  it('does not partially debit a fresh window when an existing window denies', async () => {
+    const db = new FakeFirestore(), ledger = new FirestoreQuotaLedger(db);
+    const exhausted = window('exhausted', 9);
+    expect((await ledger.reserve([exhausted], 1, now)).allowed).toBe(true);
+    const before = new Map(db.records);
+    expect((await ledger.reserve([window('fresh'), exhausted], 1, now)).allowed).toBe(false);
+    expect(db.records.size).toBe(before.size);
+    expect([...db.records.values()][0]?.consumed).toBe(1);
+  });
+
+  it('denies impossible counters safely without a write', async () => {
+    const db = new FakeFirestore(), ledger = new FirestoreQuotaLedger(db);
+    await ledger.reserve([window()], 1, now);
+    const [key] = db.records.keys();
+    if (!key) throw new Error('Missing seeded quota');
+    db.records.set(key, { ...db.records.get(key), consumed: Number.MAX_SAFE_INTEGER });
+    expect((await ledger.reserve([window()], 1, now)).allowed).toBe(false);
+    expect(db.records.get(key)?.consumed).toBe(Number.MAX_SAFE_INTEGER);
   });
 
   it('propagates datastore errors instead of granting quota', async () => {

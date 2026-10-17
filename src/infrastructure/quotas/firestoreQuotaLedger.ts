@@ -25,7 +25,7 @@ export class FirestoreQuotaLedger implements QuotaLedger {
   constructor(private readonly db: FirestoreQuotaDatabase) {}
 
   async reserve(windows: readonly QuotaWindow[], cost: number, at: Date): Promise<QuotaDecision> {
-    if (!windows.length || !Number.isSafeInteger(cost) || cost <= 0 || !Number.isFinite(at.getTime()))
+    if (!windows.length || !Number.isSafeInteger(cost) || cost <= 0 || !Number.isSafeInteger(at.getTime()))
       return { allowed: false, reason: 'invalid_window' };
     const seen = new Set<string>();
     const sorted = [...windows].sort((a, b) => a.providerId.localeCompare(b.providerId) || a.windowId.localeCompare(b.windowId));
@@ -55,7 +55,10 @@ export class FirestoreQuotaLedger implements QuotaLedger {
         rows.push({ ref, stored: snap.exists ? value as Stored : null, window: w, cap: operationalLimit(w) });
       }
 
-      const denied = rows.find(r => (r.stored?.consumed ?? 0) + cost > r.cap);
+      const denied = rows.find(r => {
+        const next = (r.stored?.consumed ?? 0) + cost;
+        return !Number.isSafeInteger(next) || next > r.cap;
+      });
       if (denied) return { allowed: false, reason: 'reserved', resetAt: denied.window.resetAt } as const;
       for (const r of rows) {
         const consumed = (r.stored?.consumed ?? 0) + cost;
