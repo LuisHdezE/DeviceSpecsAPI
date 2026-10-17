@@ -1,13 +1,27 @@
 # DSA-002B2 · Cloud Firestore quota ledger
 
-Decision (2026-10-15): Cloud Firestore is the durable, shared counter store for DeviceSpecsAPI on Google Cloud Run. MySQL/PostgreSQL are **not** part of this architecture.
+Decisión definitiva: Cloud Firestore en Cloud Run; no MySQL ni PostgreSQL.
 
-`FirestoreQuotaLedger` uses `runTransaction` and document reads before all writes. It reserves all provider windows or none. A deterministic SHA-256 ID derived from [providerId, windowId] prevents collisions and unsafe Firestore path characters. New documented periods use new window IDs, never reset a live counter. Config mismatch is denied. Every window requires a safety reserve of **8**, yielding max(0, limit - 8) permitted attempts. Database failures propagate and must fail closed. Provider HTTP calls must run **after** a successful transaction, never within a retriable transaction callback.
+`FirestoreQuotaLedger` reserva todas las ventanas dentro de `runTransaction`. Lee antes de escribir, hace fail-closed y conserva ocho consultas de seguridad por ventana. Las identidades de ventana deben corresponder a periodos documentados del proveedor. Nunca llamar a una API externa dentro del callback transaccional: Firestore puede reintentarlo.
 
-## Integration boundary
+## Estado verificable
 
-The adapter exposes small structural Firestore interfaces and accepts an injected Firestore client with compatible `collection().doc()` and `runTransaction()` API. This PR intentionally does not initialize credentials or enable providers. A future composition-root change must install the Firestore SDK, use Cloud Run workload identity / Application Default Credentials, and instantiate the adapter; no service account JSON keys belong in the repository. Cloud Firestore database/project creation, IAM minimum privileges and billing/free-tier limits must be confirmed before deployment.
+- El adaptador de dominio funciona con un cliente inyectado compatible con el contrato estructural.
+- Tests unitarios con fake comprueban contención simulada, denegación multi-ventana, políticas y errores.
+- `tests/integration/firestore-emulator.test.ts` prepara una prueba real de contención con **dos clientes SDK distintos**; solo corre si `FIRESTORE_EMULATOR_HOST` está configurado. La prueba no conecta a Firestore de producción.
+- **Pendiente**: declarar el SDK oficial `@google-cloud/firestore` en `package.json` y generar su `package-lock.json` con npm; este entorno no dispone de acceso npm. No declarar una instalación incompleta porque el CI emplea `npm ci`.
+- **Pendiente**: verificar integración real de tipos, ejecutar el emulador, configurar ADC/identidad de Cloud Run y validar costes/cuotas gratuitas. No se ha ejecutado todavía el test de emulador.
 
-## Tests and remaining gates
+## Ejecución futura de integración local
 
-Unit tests exercise reserve=8, 150 concurrent calls sharing a fake store, multi-window denial, policy mismatch, window renewal and datastore errors. The fake serializes all transactions; it is **not** an emulator or real multi-process test. Before production: run Firestore emulator integration tests and independent-client contention tests, verify SDK types, CI and Firestore limits/costs; configure project and database explicitly. Never substitute InMemoryQuotaLedger in Cloud Run. No merges or deployments without explicit approval.
+Con el emulador de Firestore escuchando en `127.0.0.1:8080`, el SDK oficial instalado y lockfile sincronizado:
+
+```bash
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 npm test -- tests/integration/firestore-emulator.test.ts
+```
+
+Usar siempre un proyecto `demo-*` para pruebas, sin credenciales reales, y no habilitar el test en CI antes de arrancar el emulador. La PR no despliega ni habilita proveedores.
+
+## Riesgos pendientes
+
+Los SDK transaccionales pueden reintentar frente a alta contención y devolver errores. Tratar esos errores como denegación de nueva llamada externa, nunca como una autorización. Verificar tiempos y límites del plan gratuito antes de desplegar. No almacenar claves privadas.
